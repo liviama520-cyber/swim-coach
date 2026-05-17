@@ -21,7 +21,7 @@ export default function TrainingPage() {
   const [timesInputs, setTimesInputs] = useState<string[]>([''])
   const [notes, setNotes] = useState('')
 
-  useEffect(() => { setSessions(getSessions()) }, [])
+  useEffect(() => { getSessions().then(setSessions) }, [])
 
   function updateSet(i: number, patch: Partial<TrainingSet>) {
     const next = sets.map((s, idx) => idx === i ? { ...s, ...patch } : s)
@@ -33,7 +33,7 @@ export default function TrainingPage() {
     }
   }
 
-  function submit() {
+  async function submit() {
     const parsedSets = sets.map((set, i) => {
       const raw = timesInputs[i] ?? ''
       const times = raw.split(/[,\s]+/).filter(Boolean).map(parseTime)
@@ -45,8 +45,8 @@ export default function TrainingPage() {
       sets: parsedSets,
       notes,
     }
-    saveSession(session)
-    setSessions(getSessions())
+    await saveSession(session)
+    setSessions(await getSessions())
     setShowForm(false)
     setSets([blankSet()])
     setTimesInputs([''])
@@ -156,7 +156,7 @@ export default function TrainingPage() {
                     {totalYards.toLocaleString()} yards · {session.sets.length} 组训练
                   </div>
                 </div>
-                <button onClick={() => { deleteSession(session.id); setSessions(getSessions()) }}
+                <button onClick={async () => { await deleteSession(session.id); setSessions(await getSessions()) }}
                   className="text-gray-600 hover:text-red-400 text-xs transition-colors">删除</button>
               </div>
               <div className="space-y-2">

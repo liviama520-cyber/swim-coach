@@ -1,42 +1,80 @@
+import { supabase } from './supabase'
 import { TrainingSession, RaceResult } from './types'
 
-const TRAINING_KEY = 'swim_training'
-const RACES_KEY = 'swim_races'
-
-export function getSessions(): TrainingSession[] {
-  if (typeof window === 'undefined') return []
-  const raw = localStorage.getItem(TRAINING_KEY)
-  return raw ? JSON.parse(raw) : []
+function toRace(row: Record<string, unknown>): RaceResult {
+  return {
+    id: row.id as string,
+    date: row.date as string,
+    meet: row.meet as string,
+    event: row.event as string,
+    distance: row.distance as number,
+    stroke: row.stroke as RaceResult['stroke'],
+    poolType: row.pool_type as RaceResult['poolType'],
+    time: row.time as number,
+    splits: (row.splits as number[]) || [],
+    notes: (row.notes as string) || '',
+  }
 }
 
-export function saveSession(session: TrainingSession) {
-  const sessions = getSessions()
-  const idx = sessions.findIndex(s => s.id === session.id)
-  if (idx >= 0) sessions[idx] = session
-  else sessions.unshift(session)
-  localStorage.setItem(TRAINING_KEY, JSON.stringify(sessions))
+function toSession(row: Record<string, unknown>): TrainingSession {
+  return {
+    id: row.id as string,
+    date: row.date as string,
+    sets: (row.sets as TrainingSession['sets']) || [],
+    notes: (row.notes as string) || '',
+  }
 }
 
-export function getRaces(): RaceResult[] {
-  if (typeof window === 'undefined') return []
-  const raw = localStorage.getItem(RACES_KEY)
-  return raw ? JSON.parse(raw) : []
+export async function getRaces(): Promise<RaceResult[]> {
+  const { data, error } = await supabase
+    .from('races')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map(toRace)
 }
 
-export function saveRace(race: RaceResult) {
-  const races = getRaces()
-  const idx = races.findIndex(r => r.id === race.id)
-  if (idx >= 0) races[idx] = race
-  else races.unshift(race)
-  localStorage.setItem(RACES_KEY, JSON.stringify(races))
+export async function saveRace(race: RaceResult) {
+  const { error } = await supabase.from('races').upsert({
+    id: race.id,
+    date: race.date,
+    meet: race.meet,
+    event: race.event,
+    distance: race.distance,
+    stroke: race.stroke,
+    pool_type: race.poolType,
+    time: race.time,
+    splits: race.splits,
+    notes: race.notes,
+  })
+  if (error) throw error
 }
 
-export function deleteRace(id: string) {
-  const races = getRaces().filter(r => r.id !== id)
-  localStorage.setItem(RACES_KEY, JSON.stringify(races))
+export async function deleteRace(id: string) {
+  const { error } = await supabase.from('races').delete().eq('id', id)
+  if (error) throw error
 }
 
-export function deleteSession(id: string) {
-  const sessions = getSessions().filter(s => s.id !== id)
-  localStorage.setItem(TRAINING_KEY, JSON.stringify(sessions))
+export async function getSessions(): Promise<TrainingSession[]> {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map(toSession)
+}
+
+export async function saveSession(session: TrainingSession) {
+  const { error } = await supabase.from('training_sessions').upsert({
+    id: session.id,
+    date: session.date,
+    sets: session.sets,
+    notes: session.notes,
+  })
+  if (error) throw error
+}
+
+export async function deleteSession(id: string) {
+  const { error } = await supabase.from('training_sessions').delete().eq('id', id)
+  if (error) throw error
 }

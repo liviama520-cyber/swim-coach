@@ -30,7 +30,7 @@ export default function RacesPage() {
   const [timeInput, setTimeInput] = useState('')
   const [splitInputs, setSplitInputs] = useState<string[]>(['', ''])
 
-  useEffect(() => { setRaces(getRaces()) }, [])
+  useEffect(() => { getRaces().then(setRaces) }, [])
 
   function numSplits() {
     if (form.distance <= 50) return 0
@@ -39,7 +39,7 @@ export default function RacesPage() {
     return 2
   }
 
-  function submit() {
+  async function submit() {
     if (!form.meet || !timeInput) return
     const time = parseTime(timeInput)
     const splits = splitInputs.slice(0, numSplits()).map(s => s ? parseTime(s) : 0).filter(Boolean)
@@ -51,8 +51,8 @@ export default function RacesPage() {
       time,
       splits,
     }
-    saveRace(race)
-    setRaces(getRaces())
+    await saveRace(race)
+    setRaces(await getRaces())
     setShowForm(false)
     setForm(blank())
     setTimeInput('')
@@ -182,7 +182,7 @@ export default function RacesPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-2xl font-mono font-bold text-blue-400">{formatTime(race.time)}</div>
-                <button onClick={() => { deleteRace(race.id); setRaces(getRaces()) }}
+                <button onClick={async () => { await deleteRace(race.id); setRaces(await getRaces()) }}
                   className="text-gray-600 hover:text-red-400 text-xs transition-colors">删除</button>
               </div>
             </div>

@@ -6,12 +6,12 @@ import { formatTime, avg } from '@/lib/format'
 export default function AnalysisPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState('')
-  const [races, setRaces] = useState(getRaces())
-  const [sessions, setSessions] = useState(getSessions())
+  const [races, setRaces] = useState<Awaited<ReturnType<typeof getRaces>>>([])
+  const [sessions, setSessions] = useState<Awaited<ReturnType<typeof getSessions>>>([])
 
   useEffect(() => {
-    setRaces(getRaces())
-    setSessions(getSessions())
+    getRaces().then(setRaces)
+    getSessions().then(setSessions)
   }, [])
 
   async function analyze() {

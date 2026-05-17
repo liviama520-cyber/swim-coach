@@ -10,8 +10,8 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState<TrainingSession[]>([])
 
   useEffect(() => {
-    setRaces(getRaces())
-    setSessions(getSessions())
+    getRaces().then(setRaces)
+    getSessions().then(setSessions)
   }, [])
 
   const pb100y = races
