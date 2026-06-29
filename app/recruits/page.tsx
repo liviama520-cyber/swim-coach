@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 
 type Recruit = {
   div: string        // D1 / D2 / D3 / NAIA ...
@@ -13,9 +13,13 @@ type Recruit = {
   club: string       // USAS club
   lsc: string
   tr: number         // transfer (1/0)
+  top5?: { e: string; t: string; p: number | null }[]  // strongest 5 SCY events
+  scid?: string      // SwimCloud swimmer id
 }
 
 const GENDER_LABEL: Record<string, string> = { M: '男子', W: '女子' }
+const STROKE_CN: Record<string, string> = { Free: '自由泳', Back: '仰泳', Breast: '蛙泳', Fly: '蝶泳', IM: '混合泳' }
+const evCN = (e: string) => { const [d, s] = e.split(' '); return `${d} ${STROKE_CN[s] || s}` }
 
 type SortKey = 'name' | 'college' | 'conf' | 'st' | 'g'
 
@@ -32,6 +36,8 @@ export default function RecruitsPage() {
   const [q, setQ] = useState('')
   const [rankedOnly, setRankedOnly] = useState(false)
   const [transfersOnly, setTransfersOnly] = useState(false)
+  const [timesOnly, setTimesOnly] = useState(false)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'college', dir: 1 })
 
@@ -81,6 +87,7 @@ export default function RecruitsPage() {
       (!state || r.st === state) &&
       (!rankedOnly || !!r.rk) &&
       (!transfersOnly || r.tr === 1) &&
+      (!timesOnly || !!(r.top5 && r.top5.length)) &&
       (!needle ||
         r.name.toLowerCase().includes(needle) ||
         r.college.toLowerCase().includes(needle) ||
@@ -93,7 +100,7 @@ export default function RecruitsPage() {
       const bv = (b[key] || '').toString()
       return av.localeCompare(bv) * dir
     })
-  }, [inDiv, conf, college, gender, state, q, rankedOnly, transfersOnly, sort])
+  }, [inDiv, conf, college, gender, state, q, rankedOnly, transfersOnly, timesOnly, sort])
 
   const stats = useMemo(() => ({
     total: filtered.length,
@@ -103,11 +110,11 @@ export default function RecruitsPage() {
     women: filtered.filter(r => r.g === 'W').length,
   }), [filtered])
 
-  const activeFilters = !!(conf || college || gender || state || q || rankedOnly || transfersOnly)
+  const activeFilters = !!(conf || college || gender || state || q || rankedOnly || transfersOnly || timesOnly)
 
   function resetFilters() {
     setConf(''); setCollege(''); setGender(''); setState('')
-    setQ(''); setRankedOnly(false); setTransfersOnly(false)
+    setQ(''); setRankedOnly(false); setTransfersOnly(false); setTimesOnly(false)
   }
 
   function toggleSort(key: SortKey) {
@@ -199,6 +206,10 @@ export default function RecruitsPage() {
             <input type="checkbox" checked={transfersOnly} onChange={e => setTransfersOnly(e.target.checked)} />
             仅转学生 (Transfer)
           </label>
+          <label className="flex items-center gap-2 text-gray-300">
+            <input type="checkbox" checked={timesOnly} onChange={e => setTimesOnly(e.target.checked)} />
+            仅看有最佳成绩
+          </label>
           {activeFilters && (
             <button onClick={resetFilters} className="text-blue-400 hover:text-blue-300 ml-auto">
               清除筛选
@@ -227,24 +238,60 @@ export default function RecruitsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r, i) => (
-                  <tr key={i} className="border-t border-gray-800 hover:bg-gray-900/60">
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {r.name}
-                      {r.rk && <RankBadge rk={r.rk} />}
-                      {r.tr === 1 && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300">转学</span>
+                {filtered.map((r, i) => {
+                  const key = `${r.name}|${r.college}`
+                  const has = !!(r.top5 && r.top5.length)
+                  const open = expanded === key
+                  return (
+                    <Fragment key={i}>
+                      <tr
+                        className={`border-t border-gray-800 hover:bg-gray-900/60 ${has ? 'cursor-pointer' : ''}`}
+                        onClick={() => has && setExpanded(open ? null : key)}
+                      >
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {has && <span className="text-emerald-500 mr-1 text-xs">{open ? '▾' : '▸'}</span>}
+                          {r.name}
+                          {has && (
+                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300">成绩</span>
+                          )}
+                          {r.rk && <RankBadge rk={r.rk} />}
+                          {r.tr === 1 && (
+                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300">转学</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">{GENDER_LABEL[r.g] || r.g}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{r.college}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-400">{r.conf}</td>
+                        <td className="px-3 py-2">{r.st}</td>
+                        <td className="px-3 py-2 text-gray-400 whitespace-nowrap">
+                          {r.hs || r.club || <span className="text-gray-700">—</span>}
+                        </td>
+                      </tr>
+                      {has && open && (
+                        <tr className="bg-gray-950/80">
+                          <td colSpan={6} className="px-3 py-3">
+                            <div className="text-xs text-gray-500 mb-2">
+                              最强 5 项（SCY 短池码，按 SwimCloud power 积分排序）
+                              {r.scid && (
+                                <a href={`https://www.swimcloud.com/swimmer/${r.scid}/`} target="_blank" rel="noopener noreferrer"
+                                  className="text-blue-400 hover:text-blue-300 ml-2">SwimCloud 主页 ↗</a>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                              {r.top5!.map((e, j) => (
+                                <div key={j} className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
+                                  <div className="text-xs text-gray-400">{evCN(e.e)}</div>
+                                  <div className="font-mono font-bold text-emerald-300">{e.t}</div>
+                                  {e.p != null && <div className="text-[10px] text-gray-600">{e.p} pts</div>}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                    <td className="px-3 py-2">{GENDER_LABEL[r.g] || r.g}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{r.college}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-400">{r.conf}</td>
-                    <td className="px-3 py-2">{r.st}</td>
-                    <td className="px-3 py-2 text-gray-400 whitespace-nowrap">
-                      {r.hs || r.club || <span className="text-gray-700">—</span>}
-                    </td>
-                  </tr>
-                ))}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -252,7 +299,7 @@ export default function RecruitsPage() {
       )}
 
       <p className="text-xs text-gray-600">
-        数据来源：SwimSwam 2026 Recruiting Database（Anne Lepesant 维护）。仅供参考，可能存在录入误差。
+        招募名单来源：SwimSwam 2026 Recruiting Database（Anne Lepesant 维护）。带「成绩」标记者可点击展开 SCY 最强 5 项及最佳成绩，来自 SwimCloud（按 power 积分排序）；目前覆盖 US News 全美前 30 国家级大学的 D3 项目。仅供参考，可能存在匹配/录入误差。
       </p>
     </div>
   )
