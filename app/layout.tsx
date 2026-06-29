@@ -8,6 +8,7 @@ const geist = Geist({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: '韩艺游泳教练',
   description: 'Cyber Swim Coach for Han Yi',
+  robots: { index: false, follow: false },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

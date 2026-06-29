@@ -6,6 +6,7 @@ const links = [
   { href: '/', label: '总览' },
   { href: '/training', label: '训练' },
   { href: '/races', label: '比赛' },
+  { href: '/recruits', label: '招募库' },
   { href: '/analysis', label: 'AI分析' },
 ]
 
